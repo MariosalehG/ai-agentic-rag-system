@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Env & secrets
+.env
+airflow/simple_auth_manager_passwords.json.generated
+
+# Data / local
+*.pdf
+notebooks/.ipynb_checkpoints/
+
+README.md
