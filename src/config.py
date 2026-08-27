@@ -32,8 +32,8 @@ class Settings(BaseSettings):
     )
 
     # Core services
-    database_url: str = "postgresql+psycopg://arxiv:arxiv@localhost:5432/arxiv"
-    redis_url: str = "redis://localhost:6379/0"
+    database_url: str
+    redis_url: str
 
     opensearch: OpenSearchSettings = Field(default_factory=OpenSearchSettings)
     ollama: OllamaSettings = Field(default_factory=OllamaSettings)
@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     langfuse__secret_key: str | None = None
     telegram__bot_token: str | None = None
 
+    arxiv__feed: str | None = None
 
 @lru_cache
 def get_settings() -> Settings:
