@@ -1,7 +1,7 @@
-import json
 import logging
+import re
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import feedparser
 import requests
@@ -24,6 +24,9 @@ ARXIV_FEED = get_settings().arxiv__feed or "https://export.arxiv.org/api/query"
 # arXiv's API usage policy asks for no more than one request every 3 seconds.
 ARXIV_MIN_REQUEST_INTERVAL_SECONDS = 3.0
 
+# arXiv ids look like "2401.12345" or "2401.12345v2"; entry.id carries the version suffix.
+_VERSION_SUFFIX_RE = re.compile(r"v\d+$")
+
 
 def _is_transient_error(exc: BaseException) -> bool:
     """True for errors worth retrying: network hiccups, rate limiting, server-side failures.
@@ -41,25 +44,27 @@ def _is_transient_error(exc: BaseException) -> bool:
 
 
 class ArxivArticle(BaseModel):
+    arxiv_id: str
     title: str
     pdf_url: str | None
-    categories: str
-    authors: str
+    categories: list[str]
+    authors: list[str]
     summary: str
     published: datetime
-    arxiv_id: str
-    parsed_content: json
+    # Raw markdown from Docling, or None if there was no PDF link or parsing failed.
+    parsed_content: str | None = None
 
 
 class ArxivScraper:
-    def __init__(self):
+    def __init__(self) -> None:
         self.converter = DocumentConverter()
         self._last_request_at: float | None = None
 
     def _throttle(self) -> None:
-        """Block until at least ARXIV_MIN_REQUEST_INTERVAL_SECONDS has passed since the last request."""
+        """Block until ARXIV_MIN_REQUEST_INTERVAL_SECONDS has passed since the last request."""
         if self._last_request_at is not None:
-            remaining = ARXIV_MIN_REQUEST_INTERVAL_SECONDS - (time.monotonic() - self._last_request_at)
+            elapsed = time.monotonic() - self._last_request_at
+            remaining = ARXIV_MIN_REQUEST_INTERVAL_SECONDS - elapsed
             if remaining > 0:
                 time.sleep(remaining)
         self._last_request_at = time.monotonic()
@@ -77,31 +82,43 @@ class ArxivScraper:
         resp.raise_for_status()
         return resp
 
-    def fetch_articles(self, searchQuery : str | None = None) -> list[ArxivArticle]:
-        """Fetch articles from the arxiv export query and return them as a list of ArxivArticle objects."""
-        articles = []
-
-        arxiv_query = f"{ARXIV_FEED}?{searchQuery}" if searchQuery else ARXIV_FEED
+    def fetch_articles(self, search_query: str | None = None) -> list[ArxivArticle]:
+        """Fetch articles from the arxiv export query and return them as ArxivArticle objects."""
+        arxiv_query = f"{ARXIV_FEED}?{search_query}" if search_query else ARXIV_FEED
 
         resp = self._fetch(arxiv_query)
         feed = feedparser.parse(resp.content)
+
+        articles = []
         for entry in feed.entries:
-            pdf_link : str | None = None
+            pdf_link: str | None = None
             for link in entry.get("links", []):
-                if link.get("type") == "PDF":
+                if link.get("title") == "pdf" or link.get("type") == "application/pdf":
                     pdf_link = link.get("href")
                     break
-            
+
+            arxiv_id = _VERSION_SUFFIX_RE.sub("", entry.id.rsplit("/", 1)[-1])
+
+            parsed_content = None
+            if pdf_link:
+                try:
+                    parsed_content = self.convert_to_markdown(pdf_link)
+                except Exception:
+                    logger.warning(
+                        "Failed to parse PDF for %s: %s", arxiv_id, pdf_link, exc_info=True
+                    )
+
+            year, month, day, hour, minute, second = entry.published_parsed[:6]
             articles.append(
                 ArxivArticle(
+                    arxiv_id=arxiv_id,
                     title=entry.title,
                     pdf_url=pdf_link,
                     summary=entry.get("summary", ""),
-                    published=datetime(*entry.published_parsed[:6], tzinfo=timezone.utc),
-                    authors=json.dumps(entry.get("authors", {})),
-                    categories=json.dumps(entry.get("tags", {})),
-                    arxiv_id=entry.id.rsplit("/", 1)[-1],
-                    parsed_content=convert_to_markdown(self=self,pdf_url=pdf_link) if pdf_link else None
+                    published=datetime(year, month, day, hour, minute, second, tzinfo=UTC),
+                    authors=[a.get("name", "") for a in entry.get("authors", [])],
+                    categories=[t.get("term", "") for t in entry.get("tags", [])],
+                    parsed_content=parsed_content,
                 )
             )
 
@@ -110,8 +127,8 @@ class ArxivScraper:
         return articles
 
     def convert_to_markdown(self, pdf_url: str) -> str:
-        """Convert a PDF from the given URL to text using the DocumentConverter."""
-        result = self.converter.convert_pdf_from_url(pdf_url)
+        """Convert a PDF from the given URL to markdown text using the DocumentConverter."""
+        result = self.converter.convert(pdf_url)
         doc = result.document
 
         if doc is None:
@@ -119,11 +136,10 @@ class ArxivScraper:
 
         return doc.export_to_markdown()
 
-        
-        
-
 
 if __name__ == "__main__":
     scraper = ArxivScraper()
-    articles = scraper.fetch_articles(searchQuery="search_query=cat:cs.AI&sortBy=submittedDate&sortOrder=descending&limit=5")
-    print(f"Here are the fetched articles from the arxiv feed: {articles}")
+    articles = scraper.fetch_articles(
+        search_query="search_query=cat:cs.AI&sortBy=submittedDate&sortOrder=descending&max_results=5"
+    )
+    print(f"Here are the fetched articles from the arxiv feed: {articles[0]}")
