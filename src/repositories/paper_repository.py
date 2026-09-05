@@ -11,9 +11,10 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session, defer
+from sqlalchemy import update
 
 from src.models.paper import Paper
-from src.services.arxiv.arxiv import ArxivArticle
+from src.services.arxiv.arxiv_scraper import ArxivArticle
 
 from fastapi import Depends
 from src.db import get_db
@@ -52,7 +53,7 @@ class PaperRepository:
             ArxivArticle(
                 arxiv_id=row.arxiv_id,
                 title=row.title,
-                summary=row.abstract,
+                abstract=row.abstract,
                 authors=row.authors,
                 categories=row.categories,
                 pdf_url=row.pdf_url or None,
@@ -74,7 +75,7 @@ class PaperRepository:
             {
                 "arxiv_id": a.arxiv_id,
                 "title": a.title,
-                "abstract": a.summary,
+                "abstract": a.abstract,
                 "authors": a.authors,
                 "categories": a.categories,
                 "pdf_url": a.pdf_url or "",
@@ -99,6 +100,16 @@ class PaperRepository:
         rows = self._session.execute(query).scalars().all()
         by_id = {row.arxiv_id: row for row in rows}
         return [by_id[arxiv_id] for arxiv_id in arxiv_ids]
+
+    def update_articles_indexed(self ,ids: list[str]):
+        stmt = (
+            update(Paper)
+            .where(Paper.arxiv_id.in_(ids))
+            .values(indexed=True)
+        )
+        self._session.execute(stmt)
+        self._session.commit()
+
 
 def get_paper_repository(session: Session = Depends(get_db)):
         """Return a PaperRepository instance for the given session."""

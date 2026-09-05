@@ -8,7 +8,7 @@ everything for the single-paper view. Both read directly off the ORM object via
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PaperSummary(BaseModel):
@@ -27,3 +27,9 @@ class PaperDetail(PaperSummary):
     parsed_content: dict[str, object]
     indexed: bool
     created_at: datetime
+
+
+class SearchRequest(BaseModel):
+    query: str
+    categories: list[str] | None = None
+    size: int = Field(default=10, le=100, ge=1, description="Number of results to return (max 100)")

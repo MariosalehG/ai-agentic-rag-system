@@ -49,7 +49,7 @@ class ArxivArticle(BaseModel):
     pdf_url: str | None
     categories: list[str]
     authors: list[str]
-    summary: str
+    abstract: str
     published: datetime
     # Raw markdown from Docling, or None if there was no PDF link or parsing failed.
     parsed_content: str | None = None
@@ -97,7 +97,7 @@ class ArxivScraper:
                     pdf_link = link.get("href")
                     break
 
-            arxiv_id = _VERSION_SUFFIX_RE.sub("", entry.id.rsplit("/", 1)[-1])
+            arxiv_id = extract_arxiv_id(entry.id)
 
             parsed_content = None
             if pdf_link:
@@ -136,10 +136,14 @@ class ArxivScraper:
 
         return doc.export_to_markdown()
 
+def extract_arxiv_id(id: str) -> str | None:
+    """Extract the arXiv ID from a URL, or return None if it can't be found."""
+    return _VERSION_SUFFIX_RE.sub("", id.rsplit("/", 1)[-1]) or None
+
 
 if __name__ == "__main__":
     scraper = ArxivScraper()
     articles = scraper.fetch_articles(
         search_query="search_query=cat:cs.AI&sortBy=submittedDate&sortOrder=descending&max_results=5"
     )
-    print(f"Here are the fetched articles from the arxiv feed: {articles[0]}")
+    print(f"Here is the number fetched articles from the arxiv feed: {len(articles)}")

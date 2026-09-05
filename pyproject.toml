@@ -14,10 +14,12 @@ dependencies = [
     "sqlalchemy>=2.0",
     "psycopg[binary]>=3.2",
     "httpx>=0.27",
-    "alembic>=1.13", 
-    "tenacity>=8.4", 
-    "feedparser>=6.0", 
-    "docling>=2.0"
+    "alembic>=1.13",
+    "tenacity>=8.4",
+    "feedparser>=6.0",
+    "docling>=2.0",
+    "torch==2.6.0+cu124",
+    "opensearch-py>=2.6",
 ]
 
 [dependency-groups]
@@ -68,3 +70,13 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
+
+# Pull a CUDA-enabled torch build so Docling's PDF pipeline can run on the GPU
+# instead of the much slower CPU-only wheel that PyPI serves by default.
+[tool.uv.sources]
+torch = { index = "pytorch-cu124" }
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true

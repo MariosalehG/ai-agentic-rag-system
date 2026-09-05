@@ -11,7 +11,7 @@ import logging
 
 from src.db import SessionLocal
 from src.repositories import PaperRepository
-from src.services.arxiv.arxiv import ArxivScraper
+from src.services.arxiv.arxiv_scraper import ArxivScraper
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ def build_search_query(category: str, max_results: int) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--category", default="cs.AI", help="arXiv category to query, e.g. cs.AI")
-    parser.add_argument("--max-results", type=int, default=1, help="Number of papers to fetch")
+    parser.add_argument("--max-results", type=int, default=5, help="Number of papers to fetch")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
