@@ -45,12 +45,12 @@ def _is_transient_error(exc: BaseException) -> bool:
 
 class ArxivArticle(BaseModel):
     arxiv_id: str
-    title: str
+    title: str | None
     pdf_url: str | None
-    categories: list[str]
-    authors: list[str]
-    abstract: str
-    published: datetime
+    categories: list[str] | None
+    authors: list[str] | None
+    abstract: str | None
+    published: datetime | None
     # Raw markdown from Docling, or None if there was no PDF link or parsing failed.
     parsed_content: str | None = None
 
@@ -114,7 +114,7 @@ class ArxivScraper:
                     arxiv_id=arxiv_id,
                     title=entry.title,
                     pdf_url=pdf_link,
-                    summary=entry.get("summary", ""),
+                    abstract=entry.get("summary", ""),
                     published=datetime(year, month, day, hour, minute, second, tzinfo=UTC),
                     authors=[a.get("name", "") for a in entry.get("authors", [])],
                     categories=[t.get("term", "") for t in entry.get("tags", [])],

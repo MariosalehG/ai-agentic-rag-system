@@ -18,3 +18,7 @@ airflow/simple_auth_manager_passwords.json.generated
 notebooks/.ipynb_checkpoints/
 
 README.md
+Claude.md
+Usage.md
+
+.gitignore

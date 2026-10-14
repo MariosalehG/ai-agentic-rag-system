@@ -15,6 +15,7 @@ from sqlalchemy import update
 
 from src.models.paper import Paper
 from src.services.arxiv.arxiv_scraper import ArxivArticle
+from src.services.parsing.markdown_parsing import split_markdown_sections
 
 from fastapi import Depends
 from src.db import get_db
@@ -80,7 +81,7 @@ class PaperRepository:
                 "categories": a.categories,
                 "pdf_url": a.pdf_url or "",
                 "published": a.published,
-                "parsed_content": {"markdown": a.parsed_content} if a.parsed_content else {},
+                "parsed_content": split_markdown_sections(a.parsed_content) if a.parsed_content else {},
                 "indexed": False,
                 "created_at": now,
             }
