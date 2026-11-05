@@ -4,6 +4,9 @@ from src.services.opensearch.client import get_opensearch_client
 
 INDEX_MAPPING = {
     "settings": {
+        "index":{
+            "knn": True,  # enable kNN for vector search
+        },
         "analysis": {
             "analyzer": {
                 "scientific_text": {
@@ -26,6 +29,20 @@ INDEX_MAPPING = {
             "authors": {"type": "keyword"},        # exact names, not tokenized
             "categories": {"type": "keyword"},     # exact match / filtering
             "published": {"type": "date"},
+            
+            # NEW - chunk level-fields
+            "chunk_text": {"type": "text", "analyzer": "scientific_text"},
+            "section_title": {"type": "keyword"},
+            "chunk_index": {"type": "integer"},
+            "embedding": {
+                "type": "knn_vector",
+                "dimension": 1024,  # must match jina-embeddings-v3 exactly
+                "method": {
+                    "name": "hnsw",
+                    "space_type": "cosinesimil",
+                    "engine": "lucene",
+                },
+            },
         }
     },
 }
@@ -42,3 +59,20 @@ def ensure_index(client: OpenSearch | None = None) -> None:
 
     client.indices.create(index=index_name, body=INDEX_MAPPING)
     print(f"Index '{index_name}' created.")
+
+def recreate_index(client: OpenSearch | None = None) -> None:
+    """Delete and recreate the index. Destroys all indexed data.
+
+    Required when changing immutable settings (like enabling knn) or field
+    mappings. Safe because Postgres is the source of truth — you can always
+    re-index from there.
+    """
+    client = client or get_opensearch_client()
+    index_name = get_settings().opensearch.index
+
+    if client.indices.exists(index=index_name):
+        client.indices.delete(index=index_name)
+        print(f"Deleted index '{index_name}'")
+
+    client.indices.create(index=index_name, body=INDEX_MAPPING)
+    print(f"Created index '{index_name}' with knn enabled")
