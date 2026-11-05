@@ -2,10 +2,12 @@ from src.services.opensearch.client import get_opensearch_client
 from src.config import get_settings
 from opensearchpy import OpenSearch
 from pydantic import BaseModel
+from src.services.embeddings.jina import EmbeddingService
 
 class OpenSearchResult(BaseModel):
     arxiv_id: str
     title: str
+    chunk_text: str 
     abstract: str
     score: float
 
@@ -28,7 +30,7 @@ def build_query(query_string: str, categories: list[str] | None, size: int) -> d
                     {
                         "multi_match": {
                             "query": query_string,
-                            "fields": ["title^3", "abstract^1"],
+                            "fields": ["title^3", "abstract^2", "chunk_text^1"],
                             "type": "best_fields"
                         }
                     }
@@ -36,6 +38,35 @@ def build_query(query_string: str, categories: list[str] | None, size: int) -> d
                 "filter": filter_clauses
             }
         }
+    }
+
+def build_knn_query(query_vector: list[float], categories: list[str] | None, size: int) -> dict:
+    """Build an OpenSearch KNN query against the embedding field."""
+    
+    knn_clause = {
+        "knn": {
+            "embedding": {
+                "vector": query_vector,
+                "k": size
+            }
+        }
+    }
+
+    if not categories:
+        return {
+            "size": size,
+            "query": knn_clause
+        }
+
+     # Filters combine with knn inside a bool query
+    return {
+        "size": size,
+        "query": {
+            "bool": {
+                "must": [knn_clause],
+                "filter": [{"terms": {"categories": categories}}],
+            }
+        },
     }
 
 
@@ -51,9 +82,37 @@ def bm25_search(query_string: str, categories: list[str] | None = None, size: in
         result = OpenSearchResult(
             arxiv_id=hit["_source"]["arxiv_id"],
             title=hit["_source"]["title"],
+            chunk_text=hit["_source"]["chunk_text"],
             abstract=hit["_source"]["abstract"],
             score=hit["_score"]
         )
         results.append(result)
 
     return results
+
+
+def vector_search(
+    query_string: str,
+    categories: list[str] | None = None,
+    size: int = 10,
+    client: OpenSearch | None = None,
+    embedder: EmbeddingService | None = None,
+) -> list[OpenSearchResult]:
+    """Semantic search: embed the query, find the nearest chunk vectors."""
+    client = client or get_opensearch_client()
+    embedder = embedder or EmbeddingService()
+
+    query_vector = embedder.embed_query(query_string)
+    body = build_knn_query(query_vector, categories, size)
+    response = client.search(index=get_settings().opensearch.index, body=body)
+
+    return [
+        OpenSearchResult(
+            arxiv_id=hit["_source"]["arxiv_id"],
+            title=hit["_source"]["title"],
+            chunk_text=hit["_source"]["chunk_text"],
+            abstract=hit["_source"]["abstract"],
+            score=hit["_score"],
+        )
+        for hit in response["hits"]["hits"]
+    ]

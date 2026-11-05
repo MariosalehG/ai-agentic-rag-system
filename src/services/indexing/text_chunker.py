@@ -15,7 +15,8 @@ def chunk_sections(
 
     step = max_words - overlap
     all_chunks: list[dict] = []
-
+    
+    chunk_index = 0
     for section in sections:
         section_title = section.get("title", "")
         text = section.get("text", "") or ""
@@ -24,7 +25,6 @@ def chunk_sections(
         if not words:
             continue # skip empty sections
 
-        chunk_index = 0
         i = 0
         while i < len(words):
             chunk_word = words[i: i + max_words]

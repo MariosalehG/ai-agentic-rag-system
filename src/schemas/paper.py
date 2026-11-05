@@ -10,6 +10,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from typing import Literal
+
 
 class PaperSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -33,3 +35,4 @@ class SearchRequest(BaseModel):
     query: str
     categories: list[str] | None = None
     size: int = Field(default=10, le=100, ge=1, description="Number of results to return (max 100)")
+    mode: Literal["keyword", "vector", "hybrid"] = "hybrid"

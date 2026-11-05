@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
-from src.services.opensearch.search import bm25_search, OpenSearchResult
+from src.services.opensearch.search import bm25_search, OpenSearchResult, vector_search
+from src.services.opensearch.hybrid import hybrid_search
 from src.schemas.paper import SearchRequest
 
 
@@ -8,6 +9,11 @@ router = APIRouter(prefix="/search", tags=["search"])
 
 @router.post("", response_model=list[OpenSearchResult])
 def search_papers(
-    query: SearchRequest,
+    request: SearchRequest,
 ) -> list[OpenSearchResult]:
-    return bm25_search(query_string=query.query, categories=query.categories, size=query.size)
+    fn = {
+        "keyword": bm25_search,
+        "vector": vector_search,
+        "hybrid": hybrid_search,
+    }
+    return fn(request.query, request.categories, request.size)
