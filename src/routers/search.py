@@ -15,5 +15,5 @@ def search_papers(
         "keyword": bm25_search,
         "vector": vector_search,
         "hybrid": hybrid_search,
-    }
+    }[request.mode]
     return fn(request.query, request.categories, request.size)
