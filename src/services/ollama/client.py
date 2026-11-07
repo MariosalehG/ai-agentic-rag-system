@@ -21,7 +21,7 @@ class OllamaClient:
 
     async def generate(self, prompt: str, system: str, temperature: float = 0.2) -> str:
         """Generate a response from the LLM for a given prompt."""
-        async with httpx.AsyncClient(timeout=180) as client:
+        async with httpx.AsyncClient(timeout=12000) as client:
             response = await client.post(
                 self.url,
                 json={

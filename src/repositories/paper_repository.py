@@ -17,8 +17,6 @@ from src.models.paper import Paper
 from src.services.arxiv.arxiv_scraper import ArxivArticle
 from src.services.parsing.markdown_parsing import split_markdown_sections
 
-from fastapi import Depends
-from src.db import get_db
 
 # Columns refreshed when a paper is re-ingested. `indexed` and `created_at` are
 # deliberately excluded: re-ingesting shouldn't reset a paper's search-index status or
@@ -110,8 +108,3 @@ class PaperRepository:
         )
         self._session.execute(stmt)
         self._session.commit()
-
-
-def get_paper_repository(session: Session = Depends(get_db)):
-        """Return a PaperRepository instance for the given session."""
-        return PaperRepository(session)

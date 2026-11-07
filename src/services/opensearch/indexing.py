@@ -2,7 +2,6 @@ from opensearchpy import OpenSearch
 from opensearchpy.helpers import bulk
 from src.db import SessionLocal
 from src.repositories import PaperRepository
-from src.repositories.paper_repository import get_paper_repository
 from fastapi import Depends
 
 from src.config import get_settings
@@ -25,7 +24,7 @@ def paper_to_document(paper: Paper) -> dict:
     }
 
 def backfill_index(
-    repo: PaperRepository | None = Depends(get_paper_repository),
+    repo: PaperRepository,
     client: OpenSearch | None = None,
 ) -> int:
     """Index all papers from Postgres into OpenSearch. Returns count indexed.
@@ -36,12 +35,7 @@ def backfill_index(
     """
     client = client or get_opensearch_client()
 
-    owns_session = not isinstance(repo, PaperRepository)
-    session = SessionLocal() if owns_session else None
-
     try:
-        if owns_session:
-            repo = PaperRepository(session)
 
         papers = repo.get_arxiv_articles()
         paper_ids = set()
