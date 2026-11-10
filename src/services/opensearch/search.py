@@ -14,7 +14,8 @@ class OpenSearchResult(BaseModel):
 def build_query(query_string: str, categories: list[str] | None, size: int) -> dict:
     """Build an OpenSearch query for the given string."""
 
-    filter_clauses = []
+    # paper-level docs from backfill_index have no chunk_text; search chunks only
+    filter_clauses = [{"exists": {"field": "chunk_text"}}]
     if categories:
         filter_clauses.append({
             "terms": {
@@ -52,19 +53,17 @@ def build_knn_query(query_vector: list[float], categories: list[str] | None, siz
         }
     }
 
-    if not categories:
-        return {
-            "size": size,
-            "query": knn_clause
-        }
+    # Filters combine with knn inside a bool query; always restrict to chunk docs
+    filter_clauses = [{"exists": {"field": "chunk_text"}}]
+    if categories:
+        filter_clauses.append({"terms": {"categories": categories}})
 
-     # Filters combine with knn inside a bool query
     return {
         "size": size,
         "query": {
             "bool": {
                 "must": [knn_clause],
-                "filter": [{"terms": {"categories": categories}}],
+                "filter": filter_clauses,
             }
         },
     }

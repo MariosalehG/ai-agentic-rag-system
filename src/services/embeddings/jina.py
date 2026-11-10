@@ -5,8 +5,10 @@ requests because embedding one chunk at a time would be needlessly slow and
 burn through rate limits.
 """
 
+import time
+
 import httpx
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from src.config import get_settings
 
@@ -14,6 +16,29 @@ JINA_URL = "https://api.jina.ai/v1/embeddings"
 JINA_MODEL = "jina-embeddings-v3"
 EMBEDDING_DIM = 1024
 BATCH_SIZE = 64
+BATCH_DELAY_SECONDS = 2  # pause between batches to stay under the rate limit
+
+_backoff = wait_exponential(multiplier=2, min=5, max=60)
+
+
+def _is_retryable(exc: BaseException) -> bool:
+    """Retry timeouts, 429s and 5xx; permanent 4xx errors (401, 422...) fail fast."""
+    if isinstance(exc, httpx.TimeoutException):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        status = exc.response.status_code
+        return status == 429 or status >= 500
+    return False
+
+
+def _wait(retry_state) -> float:
+    """Honor the Retry-After header on 429s, otherwise back off exponentially."""
+    exc = retry_state.outcome.exception()
+    if isinstance(exc, httpx.HTTPStatusError):
+        retry_after = exc.response.headers.get("Retry-After")
+        if retry_after and retry_after.isdigit():
+            return float(retry_after)
+    return _backoff(retry_state)
 
 
 class EmbeddingService:
@@ -23,9 +48,10 @@ class EmbeddingService:
             raise RuntimeError("JINA_API_KEY is not set — add it to your .env")
 
     @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=20),
-        retry=retry_if_exception_type((httpx.TimeoutException, httpx.HTTPStatusError)),
+        stop=stop_after_attempt(8),
+        wait=_wait,
+        retry=retry_if_exception(_is_retryable),
+        reraise=True,
     )
     def _embed_batch(self, texts: list[str]) -> list[list[float]]:
         response = httpx.post(
@@ -54,6 +80,8 @@ class EmbeddingService:
 
         vectors: list[list[float]] = []
         for i in range(0, len(texts), BATCH_SIZE):
+            if i:
+                time.sleep(BATCH_DELAY_SECONDS)
             batch = texts[i : i + BATCH_SIZE]
             vectors.extend(self._embed_batch(batch))
         return vectors

@@ -15,6 +15,19 @@ from src.services.indexing.text_chunker import chunk_sections
 from src.services.opensearch.client import get_opensearch_client
 
 
+def paper_is_indexed(arxiv_id: str, client: OpenSearch) -> bool:
+    """True if the paper already has at least one chunk in the index."""
+    result = client.count(
+        index=get_settings().opensearch.index,
+        body={"query": {"bool": {"filter": [
+            {"term": {"arxiv_id": arxiv_id}},
+            # paper-level docs from backfill_index share the arxiv_id; only chunks count
+            {"exists": {"field": "chunk_text"}},
+        ]}}},
+    )
+    return result["count"] > 0
+
+
 def delete_paper_chunks(arxiv_id: str, client: OpenSearch) -> None:
     """Remove all existing chunks for a paper, preventing stale orphans."""
     client.delete_by_query(
@@ -93,15 +106,35 @@ def index_all_papers(
     db: Session,
     client: OpenSearch | None = None,
     embedder: EmbeddingService | None = None,
+    skip_existing: bool = True,
 ) -> int:
-    """Chunk, embed, and index every paper in Postgres."""
+    """Chunk, embed, and index every paper in Postgres.
+
+    With skip_existing, papers that already have chunks in OpenSearch are
+    skipped, so a rerun after a failure only embeds what's missing. Pass
+    skip_existing=False to re-chunk everything (e.g. after changing chunk size).
+    """
     client = client or get_opensearch_client()
     embedder = embedder or EmbeddingService()
 
     papers = db.query(Paper).all()
     print(f"Indexing {len(papers)} papers...")
 
-    total = sum(index_paper_chunks(p, embedder, client) for p in papers)
+    total = 0
+    failed: list[str] = []
+
+    for p in papers:
+        if skip_existing and paper_is_indexed(p.arxiv_id, client):
+            print(f"  {p.arxiv_id}: already indexed, skipping")
+            continue
+        try:
+            total += index_paper_chunks(p, embedder, client)
+        except Exception as e:
+            # One bad paper shouldn't abort the rest; rerun to pick up failures.
+            print(f"  {p.arxiv_id}: FAILED ({type(e).__name__}: {e})")
+            failed.append(p.arxiv_id)
 
     print(f"\nTotal chunks indexed: {total}")
+    if failed:
+        print(f"Failed papers ({len(failed)}): {failed} - rerun to retry them")
     return total

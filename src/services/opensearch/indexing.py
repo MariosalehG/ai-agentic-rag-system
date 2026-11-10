@@ -8,6 +8,8 @@ from src.config import get_settings
 from src.models.paper import Paper
 from src.services.opensearch.client import get_opensearch_client
 
+
+
 def paper_to_document(paper: Paper) -> dict:
     """Convert a Paper SQLAlchemy model instance into the shape our OpenSearch mapping expects."""
     return {
@@ -35,32 +37,28 @@ def backfill_index(
     """
     client = client or get_opensearch_client()
 
-    try:
+    papers = repo.get_arxiv_articles(limit=100)
+    paper_ids = set()
+    actions = []
 
-        papers = repo.get_arxiv_articles()
-        paper_ids = set()
-        actions = []
+    for p in papers:
+        paper_ids.add(p.arxiv_id)
+        actions.append(paper_to_document(p))
 
-        for p in papers:
-            paper_ids.add(p.arxiv_id)
-            actions.append(paper_to_document(p))
+    success_count, errors = bulk(client, actions, raise_on_error=False)
 
-        success_count, errors = bulk(client, actions, raise_on_error=False)
+    failed_ids = set()
+    if errors:
+        print(f"{len(errors)} documents failed to index")
+        for err in errors:
+            action_type = next(iter(err))
+            failed_ids.add(err[action_type]["_id"])
+            print(err)
 
-        failed_ids = set()
-        if errors:
-            print(f"{len(errors)} documents failed to index")
-            for err in errors:
-                action_type = next(iter(err))
-                failed_ids.add(err[action_type]["_id"])
-                print(err)
+    indexedIds = paper_ids - failed_ids
+    print(indexedIds)
 
-        indexedIds = paper_ids - failed_ids
-        print(indexedIds)
-
-        repo.update_articles_indexed(ids=indexedIds)
-    finally:
-        if owns_session:
-            session.close()
-
+    repo.update_articles_indexed(ids=indexedIds)
+    
     return success_count
+

@@ -42,7 +42,7 @@ def hybrid_search(
     query_string: str,
     categories: list[str] | None = None,
     size: int = 10,
-    candidate_size: int = 30,
+    candidate_size: int = 50,
     client: OpenSearch | None = None,
     embedder: EmbeddingService | None = None,
 ) -> list[OpenSearchResult]:

@@ -1,0 +1,116 @@
+[
+  {
+    "id": "q1",
+    "question": "What specific types of demonstrations and how many target tasks are evaluated across three VLAs in 2610.18869?",
+    "expected_arxiv_ids": ["2610.18869"],
+    "type": "lexical"
+  },
+  {
+    "id": "q2",
+    "question": "According to 2610.18874, what architectural bottleneck causes the cost of an episode to grow with the number of primitives when placing an LLM agent in the robot control loop?",
+    "expected_arxiv_ids": ["2610.18874"],
+    "type": "lexical"
+  },
+  {
+    "id": "q3",
+    "question": "What two specific open-source challenges in scaling long-horizon agentic environments are addressed by 2610.18868?",
+    "expected_arxiv_ids": ["2610.18868"],
+    "type": "lexical"
+  },
+  {
+    "id": "q4",
+    "question": "What training-free decoding mechanism does 2610.18862 propose to steer a large reasoning model towards brevity using a smaller model?",
+    "expected_arxiv_ids": ["2610.18862"],
+    "type": "lexical"
+  },
+  {
+    "id": "q5",
+    "question": "How does 2610.18860 tackle the limitation that code models cannot see how their choices of layout and color come together on the canvas?",
+    "expected_arxiv_ids": ["2610.18860"],
+    "type": "lexical"
+  },
+  {
+    "id": "q6",
+    "question": "How does varying the quality of human trajectories impact downstream performance after adapting a vision-language-action policy to a specific target domain?",
+    "expected_arxiv_ids": ["2610.18869"],
+    "type": "semantic"
+  },
+  {
+    "id": "q7",
+    "question": "Why is running an LLM loop for every individual robot action inefficient, and how can we group routine actions together?",
+    "expected_arxiv_ids": ["2610.18874"],
+    "type": "semantic"
+  },
+  {
+    "id": "q8",
+    "question": "How do we provide better feedback signals to help autonomous systems successfully execute complex tasks that take hours or days to finish?",
+    "expected_arxiv_ids": ["2610.18868"],
+    "type": "semantic"
+  },
+  {
+    "id": "q9",
+    "question": "Can we make a large language model think in fewer steps without modifying its weights or fine-tuning it?",
+    "expected_arxiv_ids": ["2610.18862"],
+    "type": "semantic"
+  },
+  {
+    "id": "q10",
+    "question": "How can we combine the structural reliability of code-based visual generation with the visual design strengths of image synthesis models?",
+    "expected_arxiv_ids": ["2610.18860"],
+    "type": "semantic"
+  },
+  {
+    "id": "q11",
+    "question": "What technique allows a smaller language model to guide a larger reasoning engine to produce shorter chains of thought?",
+    "expected_arxiv_ids": ["2610.18862"],
+    "type": "semantic"
+  },
+  {
+    "id": "q12",
+    "question": "In 2610.18869, besides demonstration weighting and filtering, what third core approach is compared across reward definitions and label granularities, and what specific conditioning improves mean success?",
+    "expected_arxiv_ids": ["2610.18869"],
+    "type": "specific_detail"
+  },
+  {
+    "id": "q13",
+    "question": "What is the specific name of the long-horizon agent training dataset introduced in 2610.18868 that features verifiable, dense, progressive rewards?",
+    "expected_arxiv_ids": ["2610.18868"],
+    "type": "specific_detail"
+  },
+  {
+    "id": "q14",
+    "question": "In 2610.18862, how many times does the smaller reasoning model read the large model's Chain of Thought so far during contrastive decoding?",
+    "expected_arxiv_ids": ["2610.18862"],
+    "type": "specific_detail"
+  },
+  {
+    "id": "q15",
+    "question": "What specific kinds of visual artifacts are targeted for generation as code by the AesCode framework in 2610.18860?",
+    "expected_arxiv_ids": ["2610.18860"],
+    "type": "specific_detail"
+  },
+  {
+    "id": "q16",
+    "question": "In 2610.18874, what exact insight about sub-goals and routine action prescriptions motivates the introduction of action chunking for agentic robotics?",
+    "expected_arxiv_ids": ["2610.18874"],
+    "type": "specific_detail"
+  },
+  {
+    "id": "q17",
+    "question": "What quantization techniques are recommended by the authors to deploy Llama 3 70B on edge hardware with 16GB of VRAM?",
+    "expected_arxiv_ids": [],
+    "type": "out_of_scope"
+  },
+  {
+    "id": "q18",
+    "question": "How does zero-shot reinforcement learning from human feedback compare to direct preference optimization (DPO) in modern large language models?",
+    "expected_arxiv_ids": [],
+    "type": "out_of_scope"
+  },
+  {
+    "id": "q19",
+    "question": "What are the key architectural differences between transformer-based attention mechanisms and state-space models like Mamba for long-context audio processing?",
+    "expected_arxiv_ids": [],
+    "type": "out_of_scope"
+  }
+]
