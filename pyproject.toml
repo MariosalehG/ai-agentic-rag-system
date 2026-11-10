@@ -20,6 +20,7 @@ dependencies = [
     "docling>=2.0",
     "torch==2.6.0+cu124",
     "opensearch-py>=2.6",
+    "redis>=8.1.0",
 ]
 
 [dependency-groups]

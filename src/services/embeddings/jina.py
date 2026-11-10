@@ -12,11 +12,14 @@ from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponen
 
 from src.config import get_settings
 
+from src.services.cache.redis_cache import cache_get, cache_set, make_key
+
 JINA_URL = "https://api.jina.ai/v1/embeddings"
 JINA_MODEL = "jina-embeddings-v3"
 EMBEDDING_DIM = 1024
 BATCH_SIZE = 64
 BATCH_DELAY_SECONDS = 2  # pause between batches to stay under the rate limit
+TTL = 3600  # seconds to cache embeddings
 
 _backoff = wait_exponential(multiplier=2, min=5, max=60)
 
@@ -93,6 +96,16 @@ class EmbeddingService:
         optimizes these differently, and matching the task to the use case
         measurably improves retrieval quality.
         """
+
+        cache_key = make_key("embedding", {
+            "query": query,
+            "model": JINA_MODEL,
+            "task": "retrieval.query",
+        })
+        cached = cache_get(cache_key)
+        if(cached is not None):
+            return cached
+
         response = httpx.post(
             JINA_URL,
             headers={
@@ -107,4 +120,8 @@ class EmbeddingService:
             timeout=30,
         )
         response.raise_for_status()
-        return response.json()["data"][0]["embedding"]
+        embedding = response.json()["data"][0]["embedding"]
+
+        cache_set(cache_key, embedding, ttl=TTL)
+
+        return embedding
